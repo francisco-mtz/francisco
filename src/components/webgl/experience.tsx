@@ -1,174 +1,75 @@
 "use client";
 
-import { TrailTexture } from "@/lib/shaders/trail-texture";
-import { useFrame, useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
-import { Mesh, Vector2, Vector3 } from "three";
-import { DRACOLoader, GLTFLoader } from "three/examples/jsm/Addons.js";
-import { uniform } from "three/tsl";
-
-const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath("/draco/");
-dracoLoader.setDecoderConfig({ type: "js" });
-
-const gltfLoader = new GLTFLoader();
-gltfLoader.setDRACOLoader(dracoLoader);
-
-const mouse = new Vector3();
-export const uMouse = uniform(mouse, "vec3");
-
-const level = {
-  value: 0,
-};
+import { createRevealMaterial } from "@/lib/shaders/reveal-material";
+import { TrailTexture } from "@/lib/shaders/trail-texture";
+import { useFrame } from "@react-three/fiber";
+import { BufferGeometry, Mesh, MeshBasicMaterial, Vector2 } from "three";
+import { useGLTF } from "@react-three/drei";
 
 export function Experience() {
-  const model = useLoader(gltfLoader, "./models/bg.glb");
-
+  const materialCache = useRef(new Map<string, MeshBasicMaterial>());
+  const model = useGLTF("models/bg.glb", "/draco/");
   const mouse2D = useRef(new Vector2());
+
+  const meshes = useMemo(() => {
+    const items: Mesh<BufferGeometry, MeshBasicMaterial>[] = [];
+
+    model.scene.traverse((child) => {
+      if (child instanceof Mesh) {
+        items.push(child);
+      }
+    });
+
+    return items;
+  }, [model]);
 
   const trail = useMemo(() => {
     return new TrailTexture();
   }, []);
 
-  // LEVELS
-  useEffect(() => {
-    let direction = 1;
-
-    const interval = setInterval(() => {
-      level.value += direction;
-
-      if (level.value >= 5) {
-        direction = -1;
-      }
-
-      if (level.value <= 0) {
-        direction = 1;
-      }
-
-      console.log("LEVEL", level.value);
-    }, 200);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
-
   // MOUSE
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      mouse2D.current.x = e.clientX / window.innerWidth;
-      mouse2D.current.y = e.clientY / window.innerHeight;
+      mouse2D.current.x = e.clientX;
+      mouse2D.current.y = e.clientY;
     };
-
-    window.addEventListener("mousemove", handleMouseMove, {
+    window.addEventListener("pointermove", handleMouseMove, {
       passive: true,
     });
-
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("pointermove", handleMouseMove);
     };
   }, []);
 
-  // UPDATE TRAIL
-  useFrame(() => {
-    trail.setMouse(mouse2D.current.x, mouse2D.current.y);
+  const updateTrail = () => {
+    const { x, y } = mouse2D.current;
+
+    trail.setMouse(x, y);
     trail.update();
-  });
+  };
+
+  // UPDATE TRAIL
+  useFrame(updateTrail);
 
   useEffect(() => {
-    model.scene.traverse((child) => {
+    meshes.forEach((child) => {
       if (!(child instanceof Mesh)) return;
+      const originalMaterial = child.material;
+      const map = originalMaterial.map;
 
-      const material = child.material;
+      if (!map) return;
+      let material = materialCache.current.get(map.uuid);
 
-      material.onBeforeCompile = (shader: any) => {
-        shader.uniforms.uTrail = {
-          value: trail.texture,
-        };
+      if (!material) {
+        material = createRevealMaterial(map, trail.texture);
+        materialCache.current.set(map.uuid, material);
+      }
+      child.material = material;
 
-        shader.uniforms.uLevel = level;
-
-        // VERTEX
-
-        shader.vertexShader = shader.vertexShader.replace(
-          "#include <common>",
-          `
-          #include <common>
-
-          uniform sampler2D uTrail;
-
-          uniform float uLevel;
-
-          varying vec2 vScreenUV;
-        `,
-        );
-
-        shader.vertexShader = shader.vertexShader.replace(
-          "#include <begin_vertex>",
-          `
-          #include <begin_vertex>
-
-          vec3 pos = transformed;
-
-          vec4 ndc =
-            projectionMatrix *
-            modelViewMatrix *
-            vec4(pos, 1.0);
-
-          vScreenUV =
-            ndc.xy / ndc.w;
-
-          vScreenUV =
-            vScreenUV * 0.5 + 0.5;
-
-          float extrude =
-            texture2D(
-              uTrail,
-              vScreenUV
-            ).r;
-
-          float levelStrength =
-            uLevel / 5.0;
-
-          pos.z *= mix(
-            0.05,
-            1.0,
-            extrude * levelStrength
-          );
-
-          transformed = pos;
-        `,
-        );
-
-        // FRAGMENT
-
-        shader.fragmentShader = shader.fragmentShader.replace(
-          "#include <common>",
-          `
-          #include <common>
-          
-          uniform sampler2D uTrail;
-          varying vec2 vScreenUV;
-        `,
-        );
-
-        shader.fragmentShader = shader.fragmentShader.replace(
-          "#include <map_fragment>",
-          `
-          #include <map_fragment>
-
-          diffuseColor.rgb +=
-            texture2D(
-              uTrail,
-              vScreenUV
-            ).rgb * 0.15;
-        `,
-        );
-      };
-
-      material.needsUpdate = true;
+      originalMaterial.dispose();
     });
-  }, [model, trail]);
+  }, [meshes, trail.texture]);
 
   return (
     <>
@@ -183,3 +84,4 @@ export function Experience() {
     </>
   );
 }
+useGLTF.preload("models/bg.glb");
