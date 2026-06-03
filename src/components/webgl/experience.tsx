@@ -74,7 +74,7 @@ export function Experience() {
         );
         materialCache.current.set(map.uuid, material);
       }
-      material.flatShading = true;
+      material.flatShading = false;
       child.material = material;
 
       originalMaterial.dispose();
@@ -83,15 +83,8 @@ export function Experience() {
 
   return (
     <>
-      <directionalLight position={[0, 0, 5]} intensity={.5} />
-
+      <ambientLight intensity={1.0} />
       <primitive object={model.scene} />
-
-      {/* <mesh position={[-3.8, 2.55, 1]}>
-        <planeGeometry args={[0.8, 0.8]} />
-
-        <meshBasicMaterial map={trail.texture} toneMapped={false} />
-      </mesh> */}
     </>
   );
 }

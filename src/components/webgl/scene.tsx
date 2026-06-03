@@ -18,6 +18,7 @@ export function Scene() {
           position: [0, 0, 4],
           fov: 90,
         }}
+        dpr={[0.5, 2]}
         gl={async (glProps) => {
           const renderer = new WebGPURenderer({
             canvas: glProps.canvas as HTMLCanvasElement,

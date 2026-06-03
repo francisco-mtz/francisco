@@ -16,7 +16,10 @@ export class TrailTexture {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   fade: number;
+  currentFade: number;
+  targetFade: number;
   fadeFill: string;
+  outerBrushCanvas: HTMLCanvasElement;
   texture: CanvasTexture;
   radius: number;
   size: number;
@@ -29,12 +32,14 @@ export class TrailTexture {
 
   constructor({
     size = 512,
-    radius = 0.4,
+    radius = 0.35,
     fade = 0.01,
   }: TrailTextureConfig = {}) {
     this.size = size;
     this.radius = this.size * radius;
     this.fade = fade;
+    this.currentFade = fade;
+    this.targetFade = fade;
     this.fadeFill = `rgba(0,0,0,${this.fade})`;
     this.canvas = document.createElement("canvas");
     this.canvas.width = this.size;
@@ -62,6 +67,40 @@ export class TrailTexture {
     this.brushCanvas.height = this.radius * 2;
     const brushCtx = this.brushCanvas.getContext("2d");
 
+    this.outerBrushCanvas = document.createElement("canvas");
+
+    this.outerBrushCanvas.width = this.radius * 4;
+    this.outerBrushCanvas.height = this.radius * 4;
+
+    const outerCtx = this.outerBrushCanvas.getContext("2d");
+
+    if (!outerCtx) {
+      throw new Error("Could not create outer brush");
+    }
+
+    const outerRadius = this.radius;
+
+    const outerGradient = outerCtx.createRadialGradient(
+      outerRadius,
+      outerRadius,
+      outerRadius * 0.45,
+      outerRadius,
+      outerRadius,
+      outerRadius,
+    );
+
+    outerGradient.addColorStop(0, "rgba(0,0,255,0)");
+    outerGradient.addColorStop(0.3, "rgba(0,0,255,0)");
+    outerGradient.addColorStop(0.58, "rgba(0,0,255,0.05)");
+    outerGradient.addColorStop(0.72, "rgba(0,0,255,0.12)");
+    outerGradient.addColorStop(0.8, "rgba(0,0,255,0.02)");
+    outerGradient.addColorStop(0.9, "rgba(0,0,255,0)");
+
+    outerCtx.fillStyle = outerGradient;
+    outerCtx.beginPath();
+    outerCtx.arc(outerRadius, outerRadius, outerRadius, 0, Math.PI * 2);
+    outerCtx.fill();
+
     if (!brushCtx) {
       throw new Error("Could not create brush canvas");
     }
@@ -74,11 +113,11 @@ export class TrailTexture {
       this.radius,
       this.radius,
     );
-    gradient.addColorStop(0, "rgba(255,255,255,1)");
-    gradient.addColorStop(0.003, "rgba(255,255,255,1)");
-    gradient.addColorStop(0.015, "rgba(255,255,255,0.12)");
-    gradient.addColorStop(0.12, "rgba(255,255,255,0.035)");
-    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    gradient.addColorStop(0, "rgba(255,0,0,1)");
+    gradient.addColorStop(0.003, "rgba(255,0,0,1)");
+    gradient.addColorStop(0.015, "rgba(255,0,0,0.12)");
+    gradient.addColorStop(0.12, "rgba(255,0,0,0.035)");
+    gradient.addColorStop(1, "rgba(255,0,0,0)");
 
     brushCtx.fillStyle = gradient;
     brushCtx.beginPath();
@@ -88,26 +127,12 @@ export class TrailTexture {
 
   update() {
     const ctx = this.ctx;
-    ctx.fillStyle = this.fadeFill;
-    ctx.fillRect(0, 0, this.size, this.size);
-    // const imageData = ctx.getImageData(0, 0, this.size, this.size);
     const speed = this.velocity.length();
 
-    // if (speed < 0.01) {
-    //   const imageData = ctx.getImageData(0, 0, this.size, this.size);
-    //   const data = imageData.data;
-
-    //   for (let i = 0; i < data.length; i += 4) {
-    //     if (data[i] < 0.5) {
-    //       data[i] = 0;
-    //       data[i + 1] = 0;
-    //       data[i + 2] = 0;
-    //       data[i + 3] = 255;
-    //     }
-    //   }
-
-    //   ctx.putImageData(imageData, 0, 0);
-    // }
+    this.targetFade = speed < 0.01 ? 0.08 : 0.01;
+    this.currentFade += (this.targetFade - this.currentFade) * 0.08;
+    ctx.fillStyle = `rgba(0, 0, 0, ${this.currentFade})`;
+    ctx.fillRect(0, 0, this.size, this.size);
 
     const x = (this.mouse.x / this.screenWidth) * this.size;
     const y = (this.mouse.y / this.screenHeight) * this.size;
@@ -126,11 +151,13 @@ export class TrailTexture {
     ctx.globalCompositeOperation = "lighter";
 
     ctx.drawImage(this.brushCanvas, -this.radius, -this.radius);
+    ctx.drawImage(this.outerBrushCanvas, -this.radius, -this.radius);
 
     ctx.globalCompositeOperation = "source-over";
 
     ctx.filter = "none";
     ctx.restore();
+
     if (this.mouse.lengthSq() > 0) {
       this.texture.needsUpdate = true;
     }
