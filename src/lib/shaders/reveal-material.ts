@@ -51,8 +51,14 @@ export function createRevealMaterial(
 
   material.positionNode = Fn(() => {
     const pos = positionLocal;
-    const ndc = cameraProjectionMatrix.mul(modelViewMatrix).mul(vec4(pos, 1.0));
-    screenUV.assign(ndc.xy.div(ndc.w).add(1.0).div(2.0));
+
+    const clipPos = cameraProjectionMatrix
+      .mul(modelViewMatrix)
+      .mul(vec4(pos, 1.0));
+
+    const projectedUV = clipPos.xy.div(clipPos.w);
+    screenUV.assign(projectedUV.mul(0.5).add(0.5).clamp(vec2(0.0), vec2(1.0)));
+
     pos.z.mulAssign(mix(0.0, 1.0, extrude));
     return pos;
   })();

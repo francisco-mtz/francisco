@@ -15,15 +15,16 @@ export class TrailTexture {
   brushCanvas: HTMLCanvasElement;
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
-  fade: number;
   currentFade: number;
-  targetFade: number;
+  fade: number;
   fadeFill: string;
   outerBrushCanvas: HTMLCanvasElement;
-  texture: CanvasTexture;
   radius: number;
   size: number;
+  targetFade: number;
+  texture: CanvasTexture;
 
+  hasDirt = false;
   lastMouse = new Vector2(-1, -1);
   mouse = new Vector2();
   velocity = new Vector2();
@@ -137,18 +138,24 @@ export class TrailTexture {
     const lerp = 1.0 - Math.exp(-delta * 8.0);
     this.currentFade += (this.targetFade - this.currentFade) * lerp;
 
-    const isActive = velocitySq > 0.00001 || this.currentFade < 0.079;
+    const isMoving = velocitySq > 0.00001;
+    const isFading = this.currentFade < 0.079;
+    const isActive = isMoving || isFading;
 
-    if (!isActive) {
+    if (!isActive && !this.hasDirt) {
       return false;
     }
 
     ctx.fillStyle = `rgba(0, 0, 0, ${this.currentFade})`;
     ctx.fillRect(0, 0, this.size, this.size);
 
-    this.lastMouse.set(x, y);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (!isFading && !isMoving) {
+      this.hasDirt = false;
+    }
 
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    
+    this.lastMouse.set(x, y);
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(Math.atan2(this.velocity.y, this.velocity.x));
@@ -159,15 +166,12 @@ export class TrailTexture {
 
     ctx.drawImage(this.brushCanvas, -this.radius, -this.radius);
     ctx.drawImage(this.outerBrushCanvas, -this.radius, -this.radius);
+    this.hasDirt = true;
 
     ctx.globalCompositeOperation = "source-over";
-
     ctx.restore();
 
-    if (isActive) {
-      this.texture.needsUpdate = true;
-    }
-
+    this.texture.needsUpdate = true;
     return true;
   }
 
