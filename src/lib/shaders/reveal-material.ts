@@ -21,13 +21,13 @@ import {
 
 export function createRevealMaterial(
   map: Texture,
-  emissiveMap: Texture<unknown, TextureEventMap> | null,
+  eMap: Texture<unknown, TextureEventMap> | null,
   trailTexture: Texture,
   plasterTexture: Texture,
 ) {
   const material = new MeshStandardNodeMaterial({
     map,
-    emissiveMap,
+    emissiveMap: eMap,
     emissiveIntensity: 1,
     toneMapped: false,
   });
@@ -58,25 +58,28 @@ export function createRevealMaterial(
   })();
 
   material.colorNode = Fn(() => {
-    if (!emissiveMap) {
+    if (!eMap) {
       return vec4(1.0);
     }
+    const uvCoord = uv();
 
     type texVec4 = TextureNode<"vec4">;
-    const plaster = sRGBTransferOETF(texture(plasterTexture, uv())) as texVec4;
-    const tt1 = sRGBTransferOETF(texture(map, uv())) as texVec4;
-    const tt2 = sRGBTransferOETF(texture(emissiveMap, uv())) as texVec4;
-    const flat = sRGBTransferOETF(
-      texture(emissiveMap, vec2(0.02, 0.02)),
-    ) as texVec4;
+    const plaster = texture(plasterTexture, uvCoord) as texVec4;
+    const flat = sRGBTransferOETF(texture(eMap, vec2(0.02, 0.02))) as texVec4;
+
+    const mapTex = texture(map, uvCoord);
+    const emissiveTex = texture(eMap, uvCoord);
+
+    const t1 = sRGBTransferOETF(mapTex) as texVec4;
+    const t2 = sRGBTransferOETF(emissiveTex) as texVec4;
 
     const level0 = flat.b;
-    const level1 = tt2.b;
-    const level2 = tt2.g;
-    const level3 = tt2.r;
-    const level4 = tt1.b;
-    const level5 = tt1.g;
-    const level6 = tt1.r;
+    const level1 = t2.b;
+    const level2 = t2.g;
+    const level3 = t2.r;
+    const level4 = t1.b;
+    const level5 = t1.g;
+    const level6 = t1.r;
     let final = level0;
 
     final = mix(final, level1, smoothstep(0.0, 0.19, extrude));
@@ -96,12 +99,12 @@ export function createRevealMaterial(
       liquidFlow.mul(cavityMask),
     );
 
-    const microWarp = vec2(
-      cos(final.mul(20.0)),
-      cos(final.mul(20.0).add(1.2)),
-    ).mul(liquidFlow.mul(0.0015));
+    const wave = final.mul(20.0);
+    const waveX = cos(wave);
+    const waveY = cos(wave.add(1.2));
+    const microWarp = vec2(waveX, waveY).mul(liquidFlow.mul(0.0015));
 
-    const fluidPlaster = texture(plasterTexture, uv().add(microWarp));
+    const fluidPlaster = texture(plasterTexture, uvCoord.add(microWarp));
     const plasterDetail = fluidPlaster.rgb.sub(0.5);
     const plasterBase = plaster.rgb.mul(0.92);
 

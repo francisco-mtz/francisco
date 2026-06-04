@@ -27,8 +27,6 @@ export class TrailTexture {
   lastMouse = new Vector2(-1, -1);
   mouse = new Vector2();
   velocity = new Vector2();
-  screenHeight = window.innerHeight;
-  screenWidth = window.innerWidth;
 
   constructor({
     size = 512,
@@ -54,7 +52,7 @@ export class TrailTexture {
     this.ctx = ctx;
     this.ctx.fillStyle = "black";
     this.ctx.fillRect(0, 0, this.size, this.size);
-    ctx.filter = "blur(6px)";
+
     this.texture = new CanvasTexture(this.canvas);
     Object.assign(this.texture, {
       minFilter: LinearFilter,
@@ -125,19 +123,28 @@ export class TrailTexture {
     brushCtx.fill();
   }
 
-  update() {
+  update(delta: number, { width, height }: { width: number; height: number }) {
     const ctx = this.ctx;
-    const speed = this.velocity.length();
+
+    const x = (this.mouse.x / width) * this.size;
+    const y = (this.mouse.y / height) * this.size;
+    this.velocity.set(x - this.lastMouse.x, y - this.lastMouse.y);
+
+    const velocitySq = this.velocity.lengthSq();
+    const speed = Math.sqrt(velocitySq);
 
     this.targetFade = speed < 0.01 ? 0.08 : 0.01;
-    this.currentFade += (this.targetFade - this.currentFade) * 0.08;
+    const lerp = 1.0 - Math.exp(-delta * 8.0);
+    this.currentFade += (this.targetFade - this.currentFade) * lerp;
+
+    const isActive = velocitySq > 0.00001 || this.currentFade < 0.079;
+
+    if (!isActive) {
+      return false;
+    }
+
     ctx.fillStyle = `rgba(0, 0, 0, ${this.currentFade})`;
     ctx.fillRect(0, 0, this.size, this.size);
-
-    const x = (this.mouse.x / this.screenWidth) * this.size;
-    const y = (this.mouse.y / this.screenHeight) * this.size;
-
-    this.velocity.set(x - this.lastMouse.x, y - this.lastMouse.y);
 
     this.lastMouse.set(x, y);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
@@ -155,20 +162,20 @@ export class TrailTexture {
 
     ctx.globalCompositeOperation = "source-over";
 
-    ctx.filter = "none";
     ctx.restore();
 
-    if (this.mouse.lengthSq() > 0) {
+    if (isActive) {
       this.texture.needsUpdate = true;
     }
+
+    return true;
+  }
+
+  dispose() {
+    this.texture.dispose();
   }
 
   setMouse(x: number, y: number) {
     this.mouse.set(x, y);
-  }
-
-  resize(width: number, height: number) {
-    this.screenWidth = width;
-    this.screenHeight = height;
   }
 }

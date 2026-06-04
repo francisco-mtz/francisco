@@ -13,7 +13,7 @@ export function Scene() {
   return (
     <div className="fixed top-0 left-0 w-full h-screen">
       <Canvas
-        dpr={[0.5, 2]}
+        frameloop="demand"
         gl={async (glProps) => {
           const renderer = new WebGPURenderer({
             canvas: glProps.canvas as HTMLCanvasElement,
