@@ -1,27 +1,29 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { TrailTexture } from "@/lib/shaders/trail-texture";
+import { GpuTrailTexture } from "@/lib/shaders/gpu-trail-texture";
 import { useFrame } from "@react-three/fiber";
 import { useThree } from "@react-three/fiber";
 import { Bird } from "@/components/webgl/bird";
+import { WebGLRenderer } from "three";
 
 export function Experience() {
-  const invalidate = useThree((s) => s.invalidate);
+  const { gl, invalidate } = useThree();
 
   const trail = useMemo(() => {
-    return new TrailTexture();
+    return new GpuTrailTexture();
   }, []);
 
-  useFrame(({ size, pointer }, delta) => {
+  useFrame(({ size, pointer }) => {
     trail.setMouse(
       (pointer.x * 0.5 + 0.5) * size.width,
       (-pointer.y * 0.5 + 0.5) * size.height,
     );
-    const alive = trail.update(delta, size);
-    if (alive) {
-      invalidate();
-    }
+    const { x, y, speed } = trail.updateVelocity(size.width, size.height);
+
+    trail.setUniforms(x, y, speed);
+    trail.render(gl as WebGLRenderer);
+    invalidate();
   });
 
   useEffect(() => {

@@ -3,7 +3,7 @@ import { useGLTF, useTexture } from "@react-three/drei";
 import { GLTF } from "three/examples/jsm/Addons.js";
 import { useMemo } from "react";
 import { createRevealMaterial } from "@/lib/shaders/reveal-material";
-import { TrailTexture } from "@/lib/shaders/trail-texture";
+import { GpuTrailTexture } from "@/lib/shaders/gpu-trail-texture";
 import { MeshStandardNodeMaterial } from "three/webgpu";
 
 type GLTFResult = GLTF & {
@@ -15,7 +15,7 @@ type GLTFResult = GLTF & {
   };
 };
 
-export function Bird({ trail }: { trail: TrailTexture }) {
+export function Bird({ trail }: { trail: GpuTrailTexture  }) {
   const plaster = useTexture("/textures/plaster.jpg", (tex) => {
     tex.colorSpace = SRGBColorSpace;
   });
