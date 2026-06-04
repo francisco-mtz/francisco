@@ -39,7 +39,7 @@ export function Bird({ trail }: { trail: TrailTexture }) {
 
   return (
     <group dispose={null}>
-      <mesh geometry={nodes.bird_01.geometry} material={revealMaterial} />
+      <mesh geometry={nodes.bird_01.geometry} material={revealMaterial} position={[0, 0, 0.9]} />
     </group>
   );
 }
