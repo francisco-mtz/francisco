@@ -154,7 +154,7 @@ export class TrailTexture {
     }
 
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    
+
     this.lastMouse.set(x, y);
     ctx.save();
     ctx.translate(x, y);

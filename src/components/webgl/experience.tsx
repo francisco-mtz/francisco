@@ -5,7 +5,6 @@ import { TrailTexture } from "@/lib/shaders/trail-texture";
 import { useFrame } from "@react-three/fiber";
 import { useThree } from "@react-three/fiber";
 import { Bird } from "@/components/webgl/bird";
-import { AdaptiveDpr } from "@react-three/drei";
 
 export function Experience() {
   const invalidate = useThree((s) => s.invalidate);
@@ -33,10 +32,15 @@ export function Experience() {
     };
   }, [invalidate]);
 
+  useEffect(() => {
+    return () => {
+      trail.dispose();
+    };
+  }, [trail]);
+
   return (
     <>
       <ambientLight intensity={1.0} />
-      <AdaptiveDpr />
       <Bird trail={trail} />
     </>
   );

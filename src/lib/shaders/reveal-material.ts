@@ -121,7 +121,7 @@ export function createRevealMaterial(
     const merged = plasterBase.mul(relief);
 
     const highlightOnly = vec3(
-      shading.r.sub(1.0).max(0.0).oneMinus(),
+      0.0,
       shading.g.sub(1.0).max(0.0),
       shading.g.sub(1.0).max(0.0),
     );
