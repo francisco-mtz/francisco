@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
 import { WebGPURenderer } from "three/webgpu";
 
 const Experience = dynamic(
@@ -14,10 +13,6 @@ export function Scene() {
   return (
     <div className="fixed top-0 left-0 w-full h-screen">
       <Canvas
-        camera={{
-          position: [0, 0, 4],
-          fov: 90,
-        }}
         dpr={[0.5, 2]}
         gl={async (glProps) => {
           const renderer = new WebGPURenderer({
@@ -29,7 +24,6 @@ export function Scene() {
           return renderer;
         }}
       >
-        <OrbitControls />
         <Experience />
       </Canvas>
     </div>

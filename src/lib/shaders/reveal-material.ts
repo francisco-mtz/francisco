@@ -66,8 +66,11 @@ export function createRevealMaterial(
     const plaster = sRGBTransferOETF(texture(plasterTexture, uv())) as texVec4;
     const tt1 = sRGBTransferOETF(texture(map, uv())) as texVec4;
     const tt2 = sRGBTransferOETF(texture(emissiveMap, uv())) as texVec4;
+    const flat = sRGBTransferOETF(
+      texture(emissiveMap, vec2(0.02, 0.02)),
+    ) as texVec4;
 
-    const level0 = tt2.b.mul(0.15).add(0.45);
+    const level0 = flat.b;
     const level1 = tt2.b;
     const level2 = tt2.g;
     const level3 = tt2.r;
@@ -76,8 +79,8 @@ export function createRevealMaterial(
     const level6 = tt1.r;
     let final = level0;
 
-    final = mix(final, level1, smoothstep(0.0, 0.1, extrude));
-    final = mix(final, level2, smoothstep(0.1, 0.2, extrude));
+    final = mix(final, level1, smoothstep(0.0, 0.19, extrude));
+    final = mix(final, level2, smoothstep(0.19, 0.2, extrude));
     final = mix(final, level3, smoothstep(0.2, 0.4, extrude));
     final = mix(final, level4, smoothstep(0.4, 0.6, extrude));
     final = mix(final, level5, smoothstep(0.6, 0.8, extrude));
@@ -109,16 +112,15 @@ export function createRevealMaterial(
     const merged = plasterBase.mul(relief);
 
     const highlightOnly = vec3(
-      0.0,
+      shading.r.sub(1.0).max(0.0).oneMinus(),
       shading.g.sub(1.0).max(0.0),
-      shading.b.sub(1.0).max(0.0),
+      shading.g.sub(1.0).max(0.0),
     );
 
-    const outerGlow = vec3(0.0, 1.5, 10.0)
+    const outerGlow = vec3(0.0, 10.0, 5.0)
       .mul(highlightOnly)
       .mul(outerFluid)
-      .mul(2);
-      
+      .mul(5);
 
     return vec4(merged.add(outerGlow), 1.0);
   })();

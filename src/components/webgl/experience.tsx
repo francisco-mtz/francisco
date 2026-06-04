@@ -74,7 +74,6 @@ export function Experience() {
         );
         materialCache.current.set(map.uuid, material);
       }
-      material.flatShading = false;
       child.material = material;
 
       originalMaterial.dispose();
@@ -84,7 +83,7 @@ export function Experience() {
   return (
     <>
       <ambientLight intensity={1.0} />
-      <primitive object={model.scene} />
+      <primitive object={model.scene} position={[0, 0, 0.9]} />
     </>
   );
 }
