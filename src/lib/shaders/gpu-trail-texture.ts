@@ -49,7 +49,11 @@ export class GpuTrailTexture {
   currentVelocity = 0;
   targetVelocity = 0;
 
+  currentFade = 0.985;
+  targetFade = 0.985;
+
   fadeUniform = uniform(0.985);
+
   previousTexture!: WebGLRenderTarget["texture"];
 
   constructor({ size = 512 }: GpuTrailTextureConfig = {}) {
@@ -66,22 +70,44 @@ export class GpuTrailTexture {
       const fade = float(this.fadeUniform);
       const dist = uv().distance(mouse);
 
-      const radius = 0.3;
-      const softness = 0.1;
-      const minOpacity = 0.5;
-      const maxOpacity = 1;
+      const innerRadius = 0.18;
+      const innerSoftness = 0.08;
 
-      const speedStrength = mix(minOpacity, maxOpacity, velocity.min(1.0));
-      const brush = smoothstep(radius, radius - softness, dist).mul(
-        speedStrength,
+      const outerRadius = 0.34;
+      const outerSoftness = 0.16;
+
+      const minOpacity = 0.5;
+      const maxOpacity = 1.0;
+
+      const velocityStrength = velocity.mul(14.0).min(1.0);
+      const speedStrength = mix(minOpacity, maxOpacity, velocityStrength);
+
+      const coreBrush = smoothstep(0.06, 0.0, dist).mul(speedStrength.mul(1.2));
+
+      const innerBrush = smoothstep(
+        innerRadius,
+        innerRadius - innerSoftness,
+        dist,
+      ).mul(speedStrength.mul(0.7));
+
+      const softBrush = smoothstep(0.24, 0.02, dist).mul(
+        speedStrength.mul(0.22),
       );
+
+      const outerBrush = smoothstep(
+        outerRadius,
+        outerRadius - outerSoftness,
+        dist,
+      ).mul(speedStrength.mul(0.18));
 
       const color = previous.rgb.mul(fade);
+
       const finalColor = vec3(
-        color.r.add(brush),
-        color.g,
-        color.b.add(brush.mul(0.2)),
+        color.r.add(coreBrush).add(innerBrush).add(softBrush),
+        color.g.add(softBrush.mul(0.08)),
+        color.b.add(outerBrush),
       );
+
       material.colorNode = finalColor;
       return material;
     };
@@ -119,10 +145,18 @@ export class GpuTrailTexture {
     this.mouseUniform.value.copy(this.currentMouse);
 
     this.targetVelocity = speed;
+
     const velocityLerp = 1.0 - Math.exp(-delta * 6.0);
     this.currentVelocity +=
       (this.targetVelocity - this.currentVelocity) * velocityLerp;
     this.velocityUniform.value = this.currentVelocity;
+
+    const clampedSpeed = Math.min(speed * 12.0, 1.0);
+    this.targetFade = 0.92 + (0.985 - 0.92) * clampedSpeed;
+
+    const fadeLerp = 1.0 - Math.exp(-delta * 8.0);
+    this.currentFade += (this.targetFade - this.currentFade) * fadeLerp;
+    this.fadeUniform.value = this.currentFade;
   }
 
   updateVelocity(width: number, height: number) {
