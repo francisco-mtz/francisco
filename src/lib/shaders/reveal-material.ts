@@ -33,8 +33,12 @@ export function createRevealMaterial(
   });
 
   const screenUV = varying(vec2(0.0, 0.0));
-  const extrude = texture(trailTexture, screenUV).r;
-  const outerExtrude = texture(trailTexture, screenUV).b;
+
+  const trail = texture(trailTexture, screenUV);
+
+  const extrude = trail.r;
+  const fluidShadow = trail.g;
+  const outerExtrude = trail.b;
 
   const fluidCore = smoothstep(0.92, 1.0, extrude);
   const outerFluid = smoothstep(0.02, 0.12, outerExtrude);
@@ -118,7 +122,10 @@ export function createRevealMaterial(
       .mul(shading.add(plasterDetail.mul(0.8)))
       .mul(cavityDarkness);
 
-    const merged = plasterBase.mul(relief);
+    const shadowMask = smoothstep(0.0, 0.35, fluidShadow);
+    const fluidShadowDarkness = mix(float(1.0), float(0.72), shadowMask);
+
+    const merged = plasterBase.mul(relief).mul(fluidShadowDarkness);
 
     const highlightOnly = vec3(
       0.0,

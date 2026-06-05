@@ -13,7 +13,6 @@ import {
 } from "three";
 import {
   float,
-  mix,
   smoothstep,
   texture,
   uniform,
@@ -66,7 +65,6 @@ export class GpuTrailTexture {
       const material = new MeshBasicNodeMaterial();
       const previous = texture(buffer.texture, uv());
       const mouse = vec2(this.mouseUniform);
-      const velocity = float(this.velocityUniform);
       const fade = float(this.fadeUniform);
       const localDist = uv().distance(mouse);
 
@@ -76,41 +74,20 @@ export class GpuTrailTexture {
 
       const dist = warpedDist;
 
-      const innerRadius = 0.18;
+      const innerRadius = 0.28;
       const innerSoftness = 0.08;
 
       const outerRadius = 0.46;
       const outerSoftness = 0.34;
+      const speedStrength = float(1.0);
 
-      const minOpacity = 0.5;
-      const maxOpacity = 1.0;
-
-      const velocityStrength = velocity.mul(14.0).min(1.0);
-      const speedStrength = mix(minOpacity, maxOpacity, velocityStrength);
-
-      const coreBrush = smoothstep(0.035, 0.0, dist).mul(
-        speedStrength.mul(1.45),
-      );
+      const coreBrush = smoothstep(0.1, 0.0, dist).mul(speedStrength.mul(1.6));
 
       const innerBrush = smoothstep(
         innerRadius,
         innerRadius - innerSoftness,
         dist,
       ).mul(speedStrength.mul(0.7));
-
-      const softBrushA = smoothstep(0.18, 0.01, dist).mul(
-        speedStrength.mul(0.12),
-      );
-
-      const softBrushB = smoothstep(0.28, 0.06, dist).mul(
-        speedStrength.mul(0.08),
-      );
-
-      const softBrushC = smoothstep(0.42, 0.16, dist).mul(
-        speedStrength.mul(0.045),
-      );
-
-      const softBrush = softBrushA.add(softBrushB).add(softBrushC);
 
       const outerBrush = smoothstep(
         outerRadius,
@@ -119,11 +96,14 @@ export class GpuTrailTexture {
       ).mul(speedStrength.mul(0.12));
 
       const color = previous.rgb.mul(fade);
+      const reliefLayer = innerBrush;
+      const fluidShadowLayer = coreBrush.mul(0.45);
+      const highlightLayer = outerBrush;
 
       const finalColor = vec3(
-        color.r.add(coreBrush).add(innerBrush).add(softBrush),
-        color.g.add(softBrush.mul(0.08)),
-        color.b.add(outerBrush),
+        color.r.add(reliefLayer),
+        color.g.add(fluidShadowLayer),
+        color.b.add(highlightLayer),
       );
 
       material.colorNode = finalColor;
