@@ -68,13 +68,19 @@ export class GpuTrailTexture {
       const mouse = vec2(this.mouseUniform);
       const velocity = float(this.velocityUniform);
       const fade = float(this.fadeUniform);
-      const dist = uv().distance(mouse);
+      const localDist = uv().distance(mouse);
+
+      const warpedDist = localDist.add(
+        smoothstep(0.0, 1.0, localDist).mul(0.018),
+      );
+
+      const dist = warpedDist;
 
       const innerRadius = 0.18;
       const innerSoftness = 0.08;
 
-      const outerRadius = 0.34;
-      const outerSoftness = 0.16;
+      const outerRadius = 0.46;
+      const outerSoftness = 0.34;
 
       const minOpacity = 0.5;
       const maxOpacity = 1.0;
@@ -82,7 +88,9 @@ export class GpuTrailTexture {
       const velocityStrength = velocity.mul(14.0).min(1.0);
       const speedStrength = mix(minOpacity, maxOpacity, velocityStrength);
 
-      const coreBrush = smoothstep(0.06, 0.0, dist).mul(speedStrength.mul(1.2));
+      const coreBrush = smoothstep(0.035, 0.0, dist).mul(
+        speedStrength.mul(1.45),
+      );
 
       const innerBrush = smoothstep(
         innerRadius,
@@ -90,15 +98,25 @@ export class GpuTrailTexture {
         dist,
       ).mul(speedStrength.mul(0.7));
 
-      const softBrush = smoothstep(0.24, 0.02, dist).mul(
-        speedStrength.mul(0.22),
+      const softBrushA = smoothstep(0.18, 0.01, dist).mul(
+        speedStrength.mul(0.12),
       );
+
+      const softBrushB = smoothstep(0.28, 0.06, dist).mul(
+        speedStrength.mul(0.08),
+      );
+
+      const softBrushC = smoothstep(0.42, 0.16, dist).mul(
+        speedStrength.mul(0.045),
+      );
+
+      const softBrush = softBrushA.add(softBrushB).add(softBrushC);
 
       const outerBrush = smoothstep(
         outerRadius,
         outerRadius - outerSoftness,
         dist,
-      ).mul(speedStrength.mul(0.18));
+      ).mul(speedStrength.mul(0.12));
 
       const color = previous.rgb.mul(fade);
 
