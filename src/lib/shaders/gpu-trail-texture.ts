@@ -40,11 +40,15 @@ export class GpuTrailTexture {
   writeBuffer: WebGLRenderTarget;
 
   mouse = new Vector2(-10, -10);
+  currentMouse = new Vector2(-10, -10);
   lastMouse = new Vector2(-10, -10);
   velocity = new Vector2();
   mouseUniform = uniform(new Vector2());
 
   velocityUniform = uniform(0);
+  currentVelocity = 0;
+  targetVelocity = 0;
+
   fadeUniform = uniform(0.985);
   previousTexture!: WebGLRenderTarget["texture"];
 
@@ -61,9 +65,17 @@ export class GpuTrailTexture {
       const velocity = float(this.velocityUniform);
       const fade = float(this.fadeUniform);
       const dist = uv().distance(mouse);
-      const brush = smoothstep(0.18, 0.0, dist).mul(
-        mix(0.5, 1.5, velocity.min(1.0)),
+
+      const radius = 0.3;
+      const softness = 0.1;
+      const minOpacity = 0.5;
+      const maxOpacity = 1;
+
+      const speedStrength = mix(minOpacity, maxOpacity, velocity.min(1.0));
+      const brush = smoothstep(radius, radius - softness, dist).mul(
+        speedStrength,
       );
+
       const color = previous.rgb.mul(fade);
       const finalColor = vec3(
         color.r.add(brush),
@@ -100,9 +112,17 @@ export class GpuTrailTexture {
   setMouse(x: number, y: number) {
     this.mouse.set(x, y);
   }
-  setUniforms(x: number, y: number, speed: number) {
-    this.mouseUniform.value.set(x, y);
-    this.velocityUniform.value = speed;
+
+  setUniforms(x: number, y: number, speed: number, delta: number) {
+    const mouseLerp = 1.0 - Math.exp(-delta * 4.0);
+    this.currentMouse.lerp(new Vector2(x, y), mouseLerp);
+    this.mouseUniform.value.copy(this.currentMouse);
+
+    this.targetVelocity = speed;
+    const velocityLerp = 1.0 - Math.exp(-delta * 6.0);
+    this.currentVelocity +=
+      (this.targetVelocity - this.currentVelocity) * velocityLerp;
+    this.velocityUniform.value = this.currentVelocity;
   }
 
   updateVelocity(width: number, height: number) {

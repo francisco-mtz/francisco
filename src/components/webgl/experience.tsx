@@ -14,14 +14,14 @@ export function Experience() {
     return new GpuTrailTexture();
   }, []);
 
-  useFrame(({ size, pointer }) => {
+  useFrame(({ size, pointer }, delta) => {
     trail.setMouse(
       (pointer.x * 0.5 + 0.5) * size.width,
       (-pointer.y * 0.5 + 0.5) * size.height,
     );
     const { x, y, speed } = trail.updateVelocity(size.width, size.height);
 
-    trail.setUniforms(x, y, speed);
+    trail.setUniforms(x, y, speed, delta);
     trail.render(gl as WebGLRenderer);
     invalidate();
   });
@@ -44,6 +44,11 @@ export function Experience() {
     <>
       <ambientLight intensity={1.0} />
       <Bird trail={trail} />
+      <mesh position={[-3.8, 2.55, 1]}>
+        <planeGeometry args={[0.8, 0.8]} />
+
+        <meshBasicMaterial map={trail.texture} toneMapped={false} />
+      </mesh>
     </>
   );
 }
